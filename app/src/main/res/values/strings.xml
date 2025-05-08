@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">yolo11</string>
+    <string name="hello_blank_fragment">Blank fragment</string>
+    <string name="interface_time">Interface Time:</string>
+    <string name="gpu">GPU</string>
+    <string name="gpu_acceleration">GPU Acceleration</string>
+</resources>

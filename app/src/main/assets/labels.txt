@@ -1,0 +1,13 @@
+no entry
+no stop or parking
+no parking
+no vehicles
+vehicle no turn right
+vehicle no turn left
+pedestrians
+keep right
+keep left
+no turn left
+no turn right
+children crossing
+cross with priority road
