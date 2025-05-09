@@ -1,4 +1,5 @@
 no entry
+unused
 no stop or parking
 no parking
 no vehicles
@@ -7,7 +8,9 @@ vehicle no turn left
 pedestrians
 keep right
 keep left
+unused
 no turn left
 no turn right
+unused
 children crossing
 cross with priority road

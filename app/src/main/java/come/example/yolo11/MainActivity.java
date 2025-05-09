@@ -55,6 +55,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Hashtable;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -163,7 +164,7 @@ public class MainActivity extends AppCompatActivity implements Detector.Detector
         bindListeners();
     }
     private void sendDetectedSigns(List<String> labels) {
-        String url = "http://192.168.160.185:5000/upload_signs";
+        String url = "http://192.168.1.113:5000/upload_signs";
 
         JSONObject jsonObject = new JSONObject();
         JSONArray jsonArray = new JSONArray();
@@ -182,14 +183,17 @@ public class MainActivity extends AppCompatActivity implements Detector.Detector
         JsonObjectRequest request = new JsonObjectRequest(Request.Method.POST, url, jsonObject,
                 response -> {
                     try {
-                        // Nhận danh sách biển báo từ backend
+                        // Nhận danh sách biển báo và giải thích từ backend
                         JSONArray labelsArray = response.getJSONArray("labels");
+                        JSONObject explanations = response.getJSONObject("explanations");
+
                         List<String> labelList = new ArrayList<>();
                         for (int i = 0; i < labelsArray.length(); i++) {
                             labelList.add(labelsArray.getString(i));
                         }
-                        // Cập nhật RecyclerView với các biển báo mới
-                        updateRecyclerView(labelList);
+
+                        // Cập nhật RecyclerView với các biển báo và giải thích mới
+                        updateRecyclerView(labelList, explanations);
                     } catch (Exception e) {
                         Log.e("Response", "Error parsing response", e);
                     }
@@ -199,7 +203,8 @@ public class MainActivity extends AppCompatActivity implements Detector.Detector
 
         queue.add(request);
     }
-    private void updateRecyclerView(List<String> labels) {
+
+    private void updateRecyclerView(List<String> labels, JSONObject explanations) {
         // Loại bỏ các biển báo trùng nhau
         Set<String> uniqueLabels = new HashSet<>(labels);
 
@@ -207,9 +212,24 @@ public class MainActivity extends AppCompatActivity implements Detector.Detector
         itemList.clear();
         itemList.addAll(uniqueLabels);
 
+        // Chuyển đổi giải thích thành Map
+        Map<String, String> explanationMap = new HashMap<>();
+        for (String label : uniqueLabels) {
+            try {
+                String explanation = explanations.optString(label, "Không có giải thích cho biển báo này.");
+                explanationMap.put(label, explanation);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+
+        // Cập nhật Adapter với map giải thích
+        adapter.updateExplanations(explanationMap);
+
         // Thông báo cho Adapter để làm mới RecyclerView
         adapter.notifyDataSetChanged();
     }
+
 
     private static final String CAMERA = "android.permission.CAMERA";
     private static final int REQUEST_CAMERA = 0;
@@ -413,18 +433,19 @@ public class MainActivity extends AppCompatActivity implements Detector.Detector
 
         private List<String> itemList;
         private final TextToSpeech textToSpeech;
+        private Map<String, String> explanationMap = new HashMap<>();
 
-        private final Map<String, String> explanationMap = new HashMap<String, String>() {{
-            put("no parking", "Biển báo cấm đỗ xe ở khu vực này.");
-            put("keep right", "Biển báo yêu cầu đi bên phải.");
-            put("stop", "Biển báo yêu cầu dừng lại.");
-            put("yield", "Biển báo nhường đường.");
-            put("speed limit", "Biển báo giới hạn tốc độ.");
-        }};
+        public void updateExplanations(Map<String, String> explanations) {
+            this.explanationMap.clear();
+            this.explanationMap.putAll(explanations);
+            notifyDataSetChanged(); // Thông báo cho Adapter cập nhật
+        }
+
 
         public MyAdapter(List<String> itemList, TextToSpeech tts) {
             this.itemList = itemList;
             this.textToSpeech = tts;
+            this.explanationMap = new HashMap<>();
         }
 
 
