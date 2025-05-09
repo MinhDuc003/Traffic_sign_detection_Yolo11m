@@ -42,6 +42,7 @@ import androidx.lifecycle.LifecycleOwner;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.android.volley.DefaultRetryPolicy;
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
 import com.android.volley.toolbox.JsonObjectRequest;
@@ -115,9 +116,6 @@ public class MainActivity extends AppCompatActivity implements Detector.Detector
                 }
                 // Tạo danh sách item
                 itemList = new ArrayList<>();
-                itemList.add("Item 1");
-                itemList.add("Item 2");
-                itemList.add("Item 3");
 
 
                 recyclerView.setLayoutManager(new LinearLayoutManager(this));
@@ -151,8 +149,6 @@ public class MainActivity extends AppCompatActivity implements Detector.Detector
             }
         });
 
-//        RequestPermissions();
-
         if (allPermissionsGranted()) {
             startCamera();
         } else {
@@ -164,71 +160,19 @@ public class MainActivity extends AppCompatActivity implements Detector.Detector
         bindListeners();
     }
     private void sendDetectedSigns(List<String> labels) {
-        String url = "http://192.168.1.113:5000/upload_signs";
-
-        JSONObject jsonObject = new JSONObject();
-        JSONArray jsonArray = new JSONArray();
-
-        for (String label : labels) {
-            jsonArray.put(label);
-        }
-
-        try {
-            jsonObject.put("labels", jsonArray);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
-        RequestQueue queue = Volley.newRequestQueue(this);
-        JsonObjectRequest request = new JsonObjectRequest(Request.Method.POST, url, jsonObject,
-                response -> {
-                    try {
-                        // Nhận danh sách biển báo và giải thích từ backend
-                        JSONArray labelsArray = response.getJSONArray("labels");
-                        JSONObject explanations = response.getJSONObject("explanations");
-
-                        List<String> labelList = new ArrayList<>();
-                        for (int i = 0; i < labelsArray.length(); i++) {
-                            labelList.add(labelsArray.getString(i));
-                        }
-
-                        // Cập nhật RecyclerView với các biển báo và giải thích mới
-                        updateRecyclerView(labelList, explanations);
-                    } catch (Exception e) {
-                        Log.e("Response", "Error parsing response", e);
-                    }
-                },
-                error -> Log.e("POST", "Error: " + error.toString())
-        );
-
-        queue.add(request);
+        activity.runOnUiThread(() -> updateRecyclerView(labels));
     }
 
-    private void updateRecyclerView(List<String> labels, JSONObject explanations) {
-        // Loại bỏ các biển báo trùng nhau
-        Set<String> uniqueLabels = new HashSet<>(labels);
+    private void updateRecyclerView(List<String> labels) {
+        if (adapter == null || itemList == null) return;
 
-        // Cập nhật danh sách các item trong RecyclerView
+        Set<String> uniqueLabels = new HashSet<>(labels);
         itemList.clear();
         itemList.addAll(uniqueLabels);
-
-        // Chuyển đổi giải thích thành Map
-        Map<String, String> explanationMap = new HashMap<>();
-        for (String label : uniqueLabels) {
-            try {
-                String explanation = explanations.optString(label, "Không có giải thích cho biển báo này.");
-                explanationMap.put(label, explanation);
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
-
-        // Cập nhật Adapter với map giải thích
-        adapter.updateExplanations(explanationMap);
-
-        // Thông báo cho Adapter để làm mới RecyclerView
+        adapter.clearExplanations();
         adapter.notifyDataSetChanged();
     }
+
 
 
     private static final String CAMERA = "android.permission.CAMERA";
@@ -461,15 +405,13 @@ public class MainActivity extends AppCompatActivity implements Detector.Detector
             String item = itemList.get(position);
             holder.itemText.setText(item);
 
-            String explanation = explanationMap.getOrDefault(item, "Không có giải thích cho biển báo này.");
-            holder.textViewExplanation.setText(explanation);
-            // Set listener cho Button 1(explain)
             holder.button1.setOnClickListener(v -> {
                 if (holder.textViewExplanation.getVisibility() == View.VISIBLE) {
                     collapseView(holder.textViewExplanation);
                 } else {
                     expandView(holder.textViewExplanation);
                 }
+                fetchExplanation(item, holder.textViewExplanation, position);
             });
 
             // Set listener cho Button 2(speak)
@@ -533,6 +475,48 @@ public class MainActivity extends AppCompatActivity implements Detector.Detector
 
             animation.setDuration((int) (initialHeight / view.getContext().getResources().getDisplayMetrics().density));
             view.startAnimation(animation);
+        }
+
+        private void fetchExplanation(String label, TextView explanationView, int position) {
+            String url = "http://172.16.12.57:5000/explain_sign";
+
+            RequestQueue queue = Volley.newRequestQueue(explanationView.getContext());
+
+            JSONObject jsonBody = new JSONObject();
+            try {
+                jsonBody.put("label", label);
+            } catch (Exception e) {
+                Log.e("JSON_ERROR", "Error creating JSON body", e);
+                return;
+            }
+
+            JsonObjectRequest request = new JsonObjectRequest(Request.Method.POST, url, jsonBody,
+                    response -> {
+                        Log.d("API Response", "Response: " + response.toString());
+                        String explanation = response.optString("explanation", "Không có giải thích.");
+                        explanationMap.put(label, explanation);
+                        expandView(explanationView);
+                        explanationView.setText(explanation);
+                    },
+                    error -> {
+                        explanationView.setText("Không thể tải giải thích.");
+                        expandView(explanationView);
+                        Log.e("EXPLAIN", "Error fetching explanation: " + error.toString());
+                    }
+            );
+            request.setRetryPolicy(new DefaultRetryPolicy(
+                    10000,
+                    DefaultRetryPolicy.DEFAULT_MAX_RETRIES,
+                    DefaultRetryPolicy.DEFAULT_BACKOFF_MULT
+            ));
+
+            queue.add(request);
+        }
+
+
+
+        public void clearExplanations() {
+            explanationMap.clear();
         }
 
 
