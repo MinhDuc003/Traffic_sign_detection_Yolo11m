@@ -379,11 +379,11 @@ public class MainActivity extends AppCompatActivity implements Detector.Detector
         private final TextToSpeech textToSpeech;
         private Map<String, String> explanationMap = new HashMap<>();
 
-        public void updateExplanations(Map<String, String> explanations) {
-            this.explanationMap.clear();
-            this.explanationMap.putAll(explanations);
-            notifyDataSetChanged(); // Thông báo cho Adapter cập nhật
-        }
+//        public void updateExplanations(Map<String, String> explanations) {
+//            this.explanationMap.clear();
+//            this.explanationMap.putAll(explanations);
+//            notifyDataSetChanged(); // Thông báo cho Adapter cập nhật
+//        }
 
 
         public MyAdapter(List<String> itemList, TextToSpeech tts) {
@@ -478,7 +478,7 @@ public class MainActivity extends AppCompatActivity implements Detector.Detector
         }
 
         private void fetchExplanation(String label, TextView explanationView, int position) {
-            String url = "http://172.16.12.57:5000/explain_sign";
+            String url = "http://192.168.160.185:5000/explain_sign";
 
             RequestQueue queue = Volley.newRequestQueue(explanationView.getContext());
 
