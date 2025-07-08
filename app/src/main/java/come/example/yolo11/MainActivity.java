@@ -167,6 +167,9 @@ public class MainActivity extends AppCompatActivity implements Detector.Detector
         if (adapter == null || itemList == null) return;
 
         Set<String> uniqueLabels = new HashSet<>(labels);
+        if (itemList.containsAll(uniqueLabels)) {
+            return;
+        }
         itemList.clear();
         itemList.addAll(uniqueLabels);
         adapter.clearExplanations();
@@ -405,6 +408,15 @@ public class MainActivity extends AppCompatActivity implements Detector.Detector
             String item = itemList.get(position);
             holder.itemText.setText(item);
 
+            // Nếu đã có giải thích thì hiển thị
+            if (explanationMap.containsKey(item)) {
+                holder.textViewExplanation.setText(explanationMap.get(item));
+                holder.textViewExplanation.setVisibility(View.VISIBLE);  // Hiện lại nếu đã từng expand
+            } else {
+                holder.textViewExplanation.setText(""); // Xóa nội dung cũ
+                holder.textViewExplanation.setVisibility(View.GONE); // Ẩn view nếu không có giải thích
+            }
+
             holder.button1.setOnClickListener(v -> {
                 if (holder.textViewExplanation.getVisibility() == View.VISIBLE) {
                     collapseView(holder.textViewExplanation);
@@ -513,13 +525,9 @@ public class MainActivity extends AppCompatActivity implements Detector.Detector
             queue.add(request);
         }
 
-
-
         public void clearExplanations() {
-            explanationMap.clear();
+            this.explanationMap.clear();
         }
-
-
 
         @Override
         public int getItemCount() {
